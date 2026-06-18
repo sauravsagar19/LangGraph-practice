@@ -56,7 +56,7 @@ from langgraph.prebuilt import tools_condition
 # Node Defination
 
 def tool_calling_llm(state:State):
-    return {"messages":[llm.invoke(state["messages"])]}
+    return {"messages":[llm.invoke(state.messages)]}
 
 
 #build graph
@@ -70,7 +70,8 @@ builder.add_conditional_edges(
     "tool_calling_llm",
     tools_condition
 )
-builder.add_edge("tools",END)
+builder.add_edge("tools","tool_calling_llm")
+builder.add_edge("tool_calling_llm",END)
 graph=builder.compile()
 
 display(Image(graph.get_graph().draw_mermaid_png()))
@@ -78,5 +79,8 @@ display(Image(graph.get_graph().draw_mermaid_png()))
 with open("graph_workflow.png", "wb") as f:
         f.write(graph.get_graph().draw_mermaid_png())
 print("Graph compiled! Saved schema visualizer workflow to 'graph_workflow.png'")
+
+# result=graph.invoke({"messages":["which tool from my tool list would you call for retreiveing analysis on Attention is all you need "]})
+# print(result["messages"][-1].content)
 
 
