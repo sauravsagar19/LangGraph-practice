@@ -39,6 +39,15 @@ config = {
         "command": "python",
         "args": [str(mcp_servers_dir / "mcp_git.py")],
         "transport": "stdio"
+    },
+    "time-server": {
+        "command": "python",
+        "args": ["-m", "mcp_server_time"],
+        "transport": "stdio"
+    },
+    "dadjokes": {
+        "transport": "http", # MCP maps 'streamable-http' to 'http'
+        "url": "https://gateway.pipeworx.io/dadjokes/mcp"
     }
 }
 
@@ -102,7 +111,7 @@ async def agent(query: str):
         return f"Agent execution failed with error: {e}"
 
 if __name__ == "__main__":
-    asyncio.run(agent("multiply 4 and 10 and the push it to github repository"))
+    asyncio.run(agent("add 4 and 5 and then create a joke about the result"))
 
 
     
