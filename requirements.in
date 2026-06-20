@@ -22,4 +22,5 @@ dotenv
 IPython
 mcp-server-time
 mcp-server-git
+langgraph-cli[inmem]
 

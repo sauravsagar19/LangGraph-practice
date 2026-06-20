@@ -23,6 +23,7 @@ from pathlib import Path
 import os
 
 load_dotenv()
+LANGSMITH_TRACING = os.getenv("LANGSMITH_TRACING")
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 
@@ -30,21 +31,26 @@ llm = ChatOpenAI(model="gpt-4o-mini")
 mcp_servers_dir = Path(__file__).parent.parent / "mcp_servers"
 
 config = {
+    #custom mcp server defined by me
     "mcp-math": {
         "command": "python",
         "args": [str(mcp_servers_dir / "mcp_math.py")],
         "transport": "stdio"
     },
+    # custom mcp server defined by me
     "mcp-git": {
         "command": "python",
         "args": [str(mcp_servers_dir / "mcp_git.py")],
         "transport": "stdio"
     },
+    # It is availabe on mcp github server , I donnloaded it using pip install mcp-server-time 
+    # and then using it .
     "time-server": {
         "command": "python",
         "args": ["-m", "mcp_server_time"],
         "transport": "stdio"
     },
+    # MCP using http transport
     "dadjokes": {
         "transport": "http", # MCP maps 'streamable-http' to 'http'
         "url": "https://gateway.pipeworx.io/dadjokes/mcp"
