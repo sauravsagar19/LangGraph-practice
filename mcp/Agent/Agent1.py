@@ -81,7 +81,7 @@ async def agent(query: str):
         
         # Define tool_calling_llm to use llm_with_tools
         async def tool_calling_llm_with_tools(state: State):
-            return {"messages": [llm_with_tools.invoke(state.messages)]}
+            return {"messages": [await llm_with_tools.ainvoke(state.messages)]}
         
         # adding nodes
         builder.add_node("tool_calling_node", tool_calling_llm_with_tools)
@@ -102,7 +102,7 @@ async def agent(query: str):
         print("Generating graph visualization...")
         display(Image(graph.get_graph().draw_mermaid_png()))
         
-        with open("/workspaces/LangGraph-practice/mcp/graphsPNG/agent1.png", "wb") as f:
+        with open("C:\\Users\\19060\\Desktop\\CODE\\GenAI Practice\\LangGraph-practice\\mcp\\graphsPNG\\agent1.png", "wb") as f:
             f.write(graph.get_graph().draw_mermaid_png())
         
         print(f"Processing query: {query}")

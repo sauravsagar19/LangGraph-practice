@@ -85,7 +85,7 @@ builder = StateGraph(State)
 
 # Define tool_calling_llm to use llm_with_tools
 async def tool_calling_llm_with_tools(state: State):
-    return {"messages": [llm_with_tools.invoke(state.messages)]}
+    return {"messages": [await llm_with_tools.ainvoke(state.messages)]}
 
 # adding nodes
 builder.add_node("tool_calling_node", tool_calling_llm_with_tools)

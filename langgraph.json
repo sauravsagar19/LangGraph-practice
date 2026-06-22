@@ -1,6 +1,6 @@
 {
   "$schema": "https://langgra.ph/schema.json",
-  "dependencies": ["./mcp/Debug"],
+  "dependencies": ["."],
   "graphs": {
     "langgraph-agent1": "./mcp/Debug/graph_def.py:graph"
   },
