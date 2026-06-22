@@ -51,7 +51,7 @@ async def agent(query: str):
         return f"Agent execution failed with error: {e}"
 
 if __name__ == "__main__":
-    asyncio.run(agent("What is the time now in america chicago?"))
+    asyncio.run(agent("go to this file : /workspaces/LangGraph-practice/my_data/data.text and then tell me the content written in it. change the nujmber to 000 and save it."))
 
     
 

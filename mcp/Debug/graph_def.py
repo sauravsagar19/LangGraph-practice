@@ -45,6 +45,15 @@ config = {
         "args": [str(mcp_servers_dir / "mcp_git.py")],
         "transport": "stdio"
     },
+    "filesystem": {
+        "command": "npx",
+        "args": [
+            "-y", 
+            "@modelcontextprotocol/server-filesystem", 
+            "/workspaces/LangGraph-practice/my_data"  # Your specific path goes here!
+        ],
+        "transport": "stdio"
+    },
     # It is available on mcp github server, I downloaded it using pip install mcp-server-time
     # and then using it.
     "time-server": {
