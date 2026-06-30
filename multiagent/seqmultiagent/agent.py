@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from langchain_openai import ChatOpenAI
 from Tools.agent_tools import search_arxiv, search_wikipedia, human_approval
+
 all_tools=[search_arxiv, search_wikipedia, human_approval]
 load_dotenv()
 
@@ -18,7 +19,7 @@ if not OPENAI_API_KEY:
 class Agentclass(BaseModel):
     topic: Optional[str] = "" # the initial input
     research:Optional[str] = "" # The output of the researcher node
-    analysis:Optional[str] = "" # The output of the analyst node
+    # analysis:Optional[str] = "" # The output of the analyst node
     report:Optional[str] = "" # The output of the reporter node
     review:Optional[str] = "" # The Final output of the reviewer node
 
@@ -30,29 +31,30 @@ llm = ChatOpenAI(
 
 # DEFINING NODES
 def researcher_node(State:Agentclass):
-    search_result=search_wikipedia.invoke({"query_string":State.topic})
+    search_result=search_wikipedia.invoke({"query_string":State.topic, "sentences":3})
     return {"research":search_result}
 
-def analyser_node(State:Agentclass):
-    prompt=f'''
-    You are a research analyst. Your task is to analyze the research papers provided by the researcher node and extract key insights, trends, and implications related to the topic. Summarize the findings in a clear and concise manner, highlighting any significant discoveries or patterns that emerge from the research.
-    reasearch paper - {State.research}
-    '''
-    analysis=llm.invoke(prompt).content
-    return {"analysis":analysis}
+# def analyser_node(State:Agentclass):
+#     prompt=f'''
+#     You are a research analyst. Your task is to analyze the research papers provided by the researcher node.
+#     reasearch paper - {State.research}
+#     '''
+#     analysis=llm.invoke(prompt).content
+#     return {"analysis":analysis}
 
 def reporter_node(State:Agentclass):
     prompt=f'''
-    you are a report writer. your task is to write a comprehensive report based on the analysis of the anylyser node. The report should be well-structured, informative, and accessible to a broad audience. It should include an introduction to the topic, a summary of the key insights from the analysis, and any relevant conclusions or recommendations based on the findings.
-    Analysis - {State.analysis}
+    you are a report writer. your task is to write a comprehensive report based on the analysis of the anylyser node.
+    Analysis - {State.research}
     '''
     report=llm.invoke(prompt).content
     return {"report":report}
 
 def reviewer_node(State:Agentclass):
     prompt=f'''
-    you are a reviewer. your task is to review the report written by the reporter node. The review should assess the clarity, coherence, and overall quality of the report. Provide constructive feedback on any areas that could be improved, such as organization, depth of analysis, or clarity of writing. Additionally, highlight any strengths of the report and suggest ways to enhance its impact and effectiveness.
-    Report - {State.report}
+    you are a reviewer. your task is to review the report written by the reporter node.
+    Report - {State.report}.
+    If The report is satisfactory, provide a summary of the report. If not, provide constructive feedback for improvement.
     '''
     review=llm.invoke(prompt).content
     return {"review":review}
@@ -68,14 +70,14 @@ builder=StateGraph(Agentclass)
 
 #adding nodes
 builder.add_node("researcher", researcher_node)
-builder.add_node("analyser", analyser_node)
+# builder.add_node("analyser", analyser_node)
 builder.add_node("reporter", reporter_node)
 builder.add_node("reviewer", reviewer_node)
 
 #adding edges
 builder.add_edge(START, "researcher")
-builder.add_edge("researcher", "analyser")
-builder.add_edge("analyser", "reporter")
+builder.add_edge("researcher", "reporter")
+# builder.add_edge("analyser", "reporter")
 builder.add_edge("reporter", "reviewer")
 builder.add_edge("reviewer", END)
 
@@ -88,12 +90,18 @@ with open(f"/workspaces/LangGraph-practice/multiagent/graph_PNG/graph-{current_t
 print("Graph compiled! Saved schema visualizer workflow to 'graph_workflow.png'")
 
 
-response=graph.stream({"topic":"Explain the concept of quantum computing and its potential applications in various industries."})
+# response=graph.stream({"topic":"Explain the concept of quantum computing and its potential applications in various industries."})
 
-print("Final Output of the workflow:")
-pprint.pprint(response["review"])
+# print("Final Output of the workflow:")
+# pprint.pprint(response["review"])
 
-# for event in graph.stream({"topic": "Quantum Computing"}):
-#     for node_name, output in event.items():
-#         print(f"Node '{node_name}' finished.")
+final_state = None
+for event in graph.stream({"topic": "women empowerment"}):
+    # event is a dictionary like {"researcher": {"research": "..."}}
+    # We update our local 'final_state' with whatever the node produced
+    final_state = event 
+    print(f"Node finished...")
+
+# After the loop, final_state holds the last update
+pprint.pprint(final_state)
     
