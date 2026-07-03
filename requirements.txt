@@ -2,10 +2,13 @@
 #    uv pip compile requirements.in -o requirements.txt
 aiofile==3.11.1
     # via py-key-value-aio
+aiosqlite==0.22.1
+    # via langgraph-checkpoint-sqlite
 annotated-types==0.7.0
     # via pydantic
 anyio==4.14.0
     # via
+    #   google-genai
     #   httpx
     #   mcp
     #   openai
@@ -57,6 +60,7 @@ croniter==6.2.2
 cryptography==49.0.0
     # via
     #   authlib
+    #   google-auth
     #   joserfc
     #   langgraph-api
     #   pyjwt
@@ -66,7 +70,9 @@ cyclopts==4.18.0
 decorator==5.3.1
     # via ipython
 distro==1.9.0
-    # via openai
+    # via
+    #   google-genai
+    #   openai
 dnspython==2.8.0
     # via email-validator
 docstring-parser==0.18.0
@@ -87,12 +93,18 @@ fastmcp-slim==3.4.2
     # via fastmcp
 feedparser==6.0.12
     # via arxiv
+filetype==1.2.0
+    # via langchain-google-genai
 forbiddenfruit==0.1.4
     # via blockbuster
 gitdb==4.0.12
     # via gitpython
 gitpython==3.1.50
     # via mcp-server-git
+google-auth==2.55.1
+    # via google-genai
+google-genai==2.10.0
+    # via langchain-google-genai
 googleapis-common-protos==1.75.0
     # via opentelemetry-exporter-otlp-proto-http
 griffelib==2.1.0
@@ -117,6 +129,7 @@ httptools==0.8.0
 httpx==0.28.1
     # via
     #   fastmcp-slim
+    #   google-genai
     #   langgraph-api
     #   langgraph-cli
     #   langgraph-sdk
@@ -175,6 +188,7 @@ langchain-core==1.4.8
     # via
     #   -r requirements.in
     #   langchain
+    #   langchain-google-genai
     #   langchain-mcp-adapters
     #   langchain-openai
     #   langgraph
@@ -182,6 +196,8 @@ langchain-core==1.4.8
     #   langgraph-checkpoint
     #   langgraph-prebuilt
     #   langgraph-sdk
+langchain-google-genai==4.2.6
+    # via -r requirements.in
 langchain-mcp-adapters==0.3.0
     # via -r requirements.in
 langchain-openai==1.3.2
@@ -203,8 +219,11 @@ langgraph-checkpoint==4.1.1
     # via
     #   langgraph
     #   langgraph-api
+    #   langgraph-checkpoint-sqlite
     #   langgraph-prebuilt
     #   langgraph-runtime-inmem
+langgraph-checkpoint-sqlite==3.1.0
+    # via -r requirements.in
 langgraph-cli==0.4.30
     # via -r requirements.in
 langgraph-prebuilt==1.1.0
@@ -312,14 +331,20 @@ pure-eval==0.2.3
     # via stack-data
 py-key-value-aio==0.4.5
     # via fastmcp-slim
+pyasn1==0.6.3
+    # via pyasn1-modules
+pyasn1-modules==0.4.2
+    # via google-auth
 pycparser==3.0
     # via cffi
 pydantic==2.13.4
     # via
     #   -r requirements.in
     #   fastmcp-slim
+    #   google-genai
     #   langchain
     #   langchain-core
+    #   langchain-google-genai
     #   langgraph
     #   langsmith
     #   mcp
@@ -376,6 +401,8 @@ regex==2026.5.9
     # via tiktoken
 requests==2.34.2
     # via
+    #   google-auth
+    #   google-genai
     #   langsmith
     #   opentelemetry-exporter-otlp-proto-http
     #   requests-toolbelt
@@ -405,9 +432,13 @@ six==1.17.0
 smmap==5.0.3
     # via gitdb
 sniffio==1.3.1
-    # via openai
+    # via
+    #   google-genai
+    #   openai
 soupsieve==2.8.4
     # via beautifulsoup4
+sqlite-vec==0.1.9
+    # via langgraph-checkpoint-sqlite
 sse-starlette==3.3.4
     # via
     #   langgraph-api
@@ -428,6 +459,7 @@ structlog==25.5.0
     #   langgraph-runtime-inmem
 tenacity==9.1.4
     # via
+    #   google-genai
     #   langchain-core
     #   langgraph-api
 tiktoken==0.13.0
@@ -446,6 +478,7 @@ typing-extensions==4.15.0
     #   beautifulsoup4
     #   exceptiongroup
     #   fastmcp-slim
+    #   google-genai
     #   grpcio
     #   langchain-core
     #   langchain-mcp-adapters
@@ -496,6 +529,7 @@ wcwidth==0.8.1
 websockets==15.0.1
     # via
     #   fastmcp-slim
+    #   google-genai
     #   langgraph-api
     #   langgraph-sdk
     #   langsmith
