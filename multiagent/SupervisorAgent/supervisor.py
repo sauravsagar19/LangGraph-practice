@@ -1,7 +1,10 @@
 from typing import Annotated, Literal, Optional
-
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from IPython.display import display, Image
 from dotenv import load_dotenv
+from langchain.messages import SystemMessage
 from langchain_openai import ChatOpenAI, data
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph, add_messages
@@ -12,6 +15,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 import json
 from pydantic import BaseModel, Field
 import os
+from utility.utility import savePNG, deleteGraphPNG
 
 
 from prompts.prompts import (
@@ -28,23 +32,23 @@ GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 
 #Gloabal state / Notice board:  for all agents to access and update
 class shared_state(BaseModel):
-    is_locked: bool
-    current_agent: str
+    is_locked: bool = False
+    current_agent: str = "general_agent"
     next_agent: Optional[str] = None
-    session_summary: str
+    session_summary: str = ""
+    general_session_summary: str = ""
+    companion_session_summary: str = ""
     users_query: Optional[str] = None
 
+    # Annotated fields already have a default of [] via add_messages
     general_memory: Annotated[list, add_messages] = []
-    # final_memory: Annotated[list, add_messages] =[]
-
-    #pvt state for each agent to access and update
     Companion_memory: Annotated[list, add_messages] = []
     
 
 
 #supervisor should follow this respone model
 class supervisor_response (BaseModel):
-    next_agent : Literal["general_agent", "Interviewer_agent", "companion_agent", "Final_agent","trim_memory"]=Field(
+    next_agent : Literal["general_agent", "Interviewer_agent", "companion_agent", "Final_agent","trim_memory","long_memory_companion","long_memory_general"]=Field(
         description="The agent to route the query to next."
     )
     reasoning : str = Field(
@@ -65,7 +69,6 @@ supervisor_llm=ChatOpenAI (
     model= 'gpt-4o-mini',
     temperature=0.3
 )
-
 
 # DEFINING NODES
 def supervisor(State: shared_state):
@@ -138,12 +141,10 @@ def trim_messages_companion(State:shared_state):
     return trim_old_messages(State, "Companion_memory", 6)
 
 
-def General_agent(State:shared_state):
-
-
+def general_agent(State:shared_state):
 
     # Full context
-    shared_context=State.session_summary
+    shared_context=State.general_session_summary
 
     #General Agent context + adding new user query to the context
 
@@ -204,7 +205,8 @@ def General_agent(State:shared_state):
 def companion_agent(State:shared_state):
     
     # Full context
-    shared_context=State.session_summary
+    shared_context=State.companion_session_summary
+
     
     # Curret context
 
@@ -243,6 +245,64 @@ def companion_agent(State:shared_state):
                 "is_locked": new_locked_status  # Locking the state even after error
                 }
 
+
+def long_memory_general(State:shared_state):
+    memory_till_date=State.general_session_summary or "No Previous Summary"
+
+    last_few_messages=State.general_memory[-6:]
+
+    LONG_MEMORY_PROMPT=ChatPromptTemplate(
+      [
+          ("system", "You are a powerful content summarizer. Extract the important details from the content and make a powerful summary of the conversation"),
+          ("human", "overall summary till date - {memory_till_date}"),
+          ("human", "last few messages - {last_few_messages}")
+      ]
+    )
+
+    chain= LONG_MEMORY_PROMPT | supervisor_llm
+    res=chain.invoke({"memory_till_date":memory_till_date,"last_few_messages":last_few_messages})
+    return {"general_session_summary":res.content}
+
+# def long_memory_companion(State:shared_state):
+#     memory_till_date=State.companion_session_summary or "No Previous Summary"
+#     last_few_messages= State.Companion_memory[-6:]
+#     LONG_MEMORY_PROMPT=ChatPromptTemplate(
+#       [
+#           ("system", "You are a powerful content summarizer. Extract the important details from the content and make a powerful summary of the conversation"),
+#           ("human", "overall summary till date - {memory_till_date}"),
+#           ("human", "last few messages - {last_few_messages}")
+#       ]
+#     )
+
+#     chain= LONG_MEMORY_PROMPT | supervisor_llm
+#     res=chain.invoke({"memory_till_date":memory_till_date,"last_few_messages":last_few_messages})
+#     return {"companion_session_summary":res.content}
+def long_memory_companion(State: shared_state):
+    # 1. Start with the existing summary
+    old_summary = State.companion_session_summary or "No previous conversation."
+    
+    # 2. Get the new messages that haven't been summarized yet
+    # (The last 6 messages)
+    new_messages = State.Companion_memory[-6:]
+    
+    # 3. Create a PROPER recursive prompt
+    summarize_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert summarizer. Update the existing summary of a conversation by incorporating new recent messages. Maintain all key facts, emotional states, and user details."),
+        ("human", "Current Summary: {old_summary}"),
+        ("human", "Recent conversation to add: {new_messages}"),
+        ("human", "Provide the updated, comprehensive summary of the entire conversation so far.")
+    ])
+
+    # 4. Use the chain
+    chain = summarize_prompt | supervisor_llm
+    res = chain.invoke({
+        "old_summary": old_summary, 
+        "new_messages": new_messages
+    })
+    
+    # 5. Return the full, updated summary
+    return {"companion_session_summary": res.content}
+
 def route_agent(State:shared_state):
     return State.next_agent
 
@@ -250,10 +310,12 @@ def route_agent(State:shared_state):
 # def route
 builder=StateGraph(shared_state)
 builder.add_node("supervisor", supervisor)
-builder.add_node("general_agent", General_agent)
+builder.add_node("general_agent", general_agent)
 builder.add_node("companion_agent", companion_agent)
-builder.add_node("trim_memory_general", trim_messages_general) 
-builder.add_node("trim_memory_companion", trim_messages_companion) 
+builder.add_node("trim_messages_general", trim_messages_general) 
+builder.add_node("trim_messages_companion", trim_messages_companion) 
+builder.add_node("long_memory_general",long_memory_general)
+builder.add_node("long_memory_companion",long_memory_companion)
 
 builder.set_entry_point("supervisor")
 builder.add_conditional_edges(
@@ -261,8 +323,13 @@ builder.add_conditional_edges(
     route_agent,
     {
         "general_agent": "general_agent",
-        "trim_memory_general": "trim_memory_general",
-        "trim_memory_companion": "trim_memory_companion",
+        "trim_messages_general": "trim_messages_general",
+        "trim_messages_companion": "trim_messages_companion",
+        
+        "long_memory_general":"long_memory_general",
+        "long_memory_companion":"long_memory_companion",
+
+
         # "Interviewer_agent": "interviewer_agent",
         "companion_agent": "companion_agent",
         # "Final_agent": "final_agent"
@@ -270,12 +337,15 @@ builder.add_conditional_edges(
 )
 
 
-builder.add_edge("general_agent", "trim_memory_general")
-builder.add_edge("trim_memory_general", END)
+builder.add_edge("general_agent", "trim_messages_general")
+builder.add_edge("trim_messages_general", "long_memory_general")
+builder.add_edge("long_memory_general",END)
 
-builder.add_edge("companion_agent", "trim_memory_companion")
-builder.add_edge("trim_memory_companion", END)
-# builder.add_edge("final_agent", END)    
+
+builder.add_edge("companion_agent", "trim_messages_companion")
+builder.add_edge("trim_messages_companion", "long_memory_companion")
+builder.add_edge("long_memory_companion",END)
+ 
 
 
 #compile
@@ -292,31 +362,29 @@ memory_checkpointer=SqliteSaver(conn=conn)
 graph=builder.compile(checkpointer=memory_checkpointer)
 
 
-display(Image(graph.get_graph().draw_mermaid_png()))
-# print(display)
-with open(f"/workspaces/LangGraph-practice/multiagent/SupervisorAgent/graph_PNG/graph-{current_time}.png", "wb") as f:
-        f.write(graph.get_graph().draw_mermaid_png())
-print("Graph compiled! Saved schema visualizer workflow to 'graph_workflow.png'")
-
-
-
-
 config={
-    "recursion_limit": 5,
+    "recursion_limit": 20,
     "configurable": {
         "thread_id": "session_001"
     }
 }
 
 # we are invoking these things only one time. 
-graph.invoke({
-    "is_locked": False,
-    "current_agent": "general_agent",
-    "session_summary": "",
-    "general_memory": [],
-    "Companion_memory": [],
-    "users_query": "" # Ensuring that the fresh conversation doesnt set none to users query, becase of which they may be problme in graph.
-}, config=config)
+# graph.invoke({
+#     # "is_locked": False,
+#     # "current_agent": "general_agent",
+#     # "session_summary": "",
+#     # "long_memory_general":"",
+#     # "long_memory_companion":"",
+#     # "general_memory": [],
+#     # "Companion_memory": [],
+#     "users_query": "" # Ensuring that the fresh conversation doesnt set none to users query, becase of which they may be problme in graph.
+# }, config=config)
+
+deleteGraphPNG(folder_path="/workspaces/LangGraph-practice/multiagent/SupervisorAgent/graph_PNG")
+time.sleep(1)
+savePNG(folderpath="/workspaces/LangGraph-practice/multiagent/SupervisorAgent/graph_PNG/",file_name=str(current_time),graph=graph)
+
 
 while True: 
     user_input=input("User: ")
@@ -348,6 +416,8 @@ while True:
             print("🤖 General Response: ", updated_state["general_memory"][-1].content)
     else:
         print(f"🤖 [{active_worker}] Response: ", updated_state["general_memory"][-1].content)
+
+
     
 
 
