@@ -32,6 +32,7 @@ class shared_state(BaseModel):
     current_agent: str
     next_agent: Optional[str] = None
     session_summary: str
+    users_query: Optional[str] = None
 
     general_memory: Annotated[list, add_messages] = []
     # final_memory: Annotated[list, add_messages] =[]
@@ -74,14 +75,18 @@ def supervisor(State: shared_state):
         next_agent = State.current_agent
         print("The state is locked. Routing to the current agent: ", next_agent)
         return {"next_agent":next_agent}
-        
+
+    if not State.general_memory:
+        return {"next_agent":"general_agent"}
+    
+    latest_query= State.users_query
 
     llm_with_structured_output=supervisor_llm.with_structured_output(supervisor_response)
     SUPERVISOR_CHAIN=SUPERVISOR_PROMPT | llm_with_structured_output
 
     try:
         response=SUPERVISOR_CHAIN.invoke({
-            "user_input" : State.general_memory[-1].content,
+            "user_input" : latest_query,
             "is_locked": State.is_locked,
             "current_agent":State.current_agent
             # "session_summary": State.session_summary,
@@ -123,7 +128,7 @@ def trim_old_messages(State:shared_state, Agent_memory:str, Message_to_keep:int=
 
     deletion_commands = [RemoveMessage(id=msg.id) for msg in older_messages]
 
-    print("Older messages trimmed. Only the latest message will be sent to the agent.")
+    print("TRIMMED OLDER MESSAGE")
     return {f"{Agent_memory}": deletion_commands}
 
 def trim_messages_general(State:shared_state):
@@ -135,11 +140,19 @@ def trim_messages_companion(State:shared_state):
 
 def General_agent(State:shared_state):
 
+
+
     # Full context
     shared_context=State.session_summary
 
+    #General Agent context + adding new user query to the context
+
+    user_msg=HumanMessage(content=State.users_query)
+
+    updated_memory=State.general_memory + [user_msg]
+    
     # General Agent chat history
-    recent_messages=State.general_memory[-6:]  # last 6 messages
+    recent_messages=updated_memory[-6:]  # last 6 messages
 
     llm_with_structured_output=supervisor_llm.with_structured_output(worker_response)
 
@@ -150,12 +163,12 @@ def General_agent(State:shared_state):
             "recent_message": recent_messages
         })  # since we have not given it any fixed output schema, so it will be returning raw string. 
 
-        return {"general_memory": [AIMessage(response.response_from_worker)],
+        return {"general_memory": [user_msg,AIMessage(response.response_from_worker)],
                 "current_agent": "general_agent"}
     
     except Exception as e:
         print("Error in General Agent chain: ", e)
-        return {"general_memory": [AIMessage(content="Error in General Agent.")],
+        return {"general_memory": [user_msg,AIMessage(content="Error in General Agent.")],
                 "current_agent": "general_agent"}
 
 
@@ -194,14 +207,19 @@ def companion_agent(State:shared_state):
     shared_context=State.session_summary
     
     # Curret context
-    current_conv=State.Companion_memory
+
+    user_msg=HumanMessage(content=State.users_query)
+
+    updated_memory=State.Companion_memory + [user_msg]
+
+    recent_messages=updated_memory[-6:]  # last 6 messages
 
     llm_with_structured_output=supervisor_llm.with_structured_output(worker_response)
     COMPANION_CHAIN = COMPANION_AGENT_PROMPT | llm_with_structured_output
     try:
         response=COMPANION_CHAIN.invoke({
             "session_summary": shared_context,
-            "current_conversation": current_conv,
+            "current_conversation": recent_messages,
         })
         companion_response = response.response_from_worker
 
@@ -214,13 +232,13 @@ def companion_agent(State:shared_state):
             new_agent = "general_agent"
             
         return {
-            "Companion_memory": [AIMessage(companion_response)],
+            "Companion_memory": [user_msg,AIMessage(companion_response)],
             "current_agent": new_agent,
             "is_locked": new_locked_status
     }
     except Exception as e:
         print("Error in Companion Agent chain: ", e)
-        return {"Companion_memory": [AIMessage(content="Error in Companion Agent.")],
+        return {"Companion_memory": [user_msg,AIMessage(content="Error in Companion Agent.")],
                 "current_agent": new_agent,
                 "is_locked": new_locked_status  # Locking the state even after error
                 }
@@ -296,7 +314,8 @@ graph.invoke({
     "current_agent": "general_agent",
     "session_summary": "",
     "general_memory": [],
-    "Companion_memory": []
+    "Companion_memory": [],
+    "users_query": "" # Ensuring that the fresh conversation doesnt set none to users query, becase of which they may be problme in graph.
 }, config=config)
 
 while True: 
@@ -308,13 +327,16 @@ while True:
     if not user_input.strip():
         continue
 
-    new_input_payload = {
-        "general_memory": [HumanMessage(content=user_input)],
-        "Companion_memory": [HumanMessage(content=user_input)]
-    }
+    # THIS WAS CAUSE OF MEMORY LEAK. WE WILL EXTRACT THE USERS QUERY IN AGENT FUNTION ITSELF INSTEAD OF HERE.
+    # new_input_payload = {
+    #     "general_memory": [HumanMessage(content=user_input)],
+    #     "Companion_memory": [HumanMessage(content=user_input)]
+    # }
 
 
-    updated_state = graph.invoke(new_input_payload, config=config)
+    updated_state = graph.invoke({
+        "users_query": user_input,
+    }, config=config)
 
     active_worker = updated_state.get("current_agent")
     
