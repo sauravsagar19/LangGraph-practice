@@ -25,4 +25,5 @@ mcp-server-git
 langgraph-cli[inmem]
 langchain-google-genai
 langgraph-checkpoint-sqlite
+tiktoken
 
