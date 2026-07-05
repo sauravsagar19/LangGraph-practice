@@ -225,7 +225,7 @@ def companion_agent(State:shared_state):
         })
         companion_response = response.response_from_worker
 
-        new_locked_status = True # Keep it locked if you want
+        new_locked_status = True 
         new_agent = "companion_agent"
         
         if response.want_exit:
@@ -263,20 +263,7 @@ def long_memory_general(State:shared_state):
     res=chain.invoke({"memory_till_date":memory_till_date,"last_few_messages":last_few_messages})
     return {"general_session_summary":res.content}
 
-# def long_memory_companion(State:shared_state):
-#     memory_till_date=State.companion_session_summary or "No Previous Summary"
-#     last_few_messages= State.Companion_memory[-6:]
-#     LONG_MEMORY_PROMPT=ChatPromptTemplate(
-#       [
-#           ("system", "You are a powerful content summarizer. Extract the important details from the content and make a powerful summary of the conversation"),
-#           ("human", "overall summary till date - {memory_till_date}"),
-#           ("human", "last few messages - {last_few_messages}")
-#       ]
-#     )
 
-#     chain= LONG_MEMORY_PROMPT | supervisor_llm
-#     res=chain.invoke({"memory_till_date":memory_till_date,"last_few_messages":last_few_messages})
-#     return {"companion_session_summary":res.content}
 def long_memory_companion(State: shared_state):
     # 1. Start with the existing summary
     old_summary = State.companion_session_summary or "No previous conversation."
