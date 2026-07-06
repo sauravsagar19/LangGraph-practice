@@ -26,4 +26,6 @@ langgraph-cli[inmem]
 langchain-google-genai
 langgraph-checkpoint-sqlite
 tiktoken
+google-api-python-client
+youtube-transcript-api
 
