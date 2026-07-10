@@ -1,0 +1,136 @@
+import time
+import threading
+import mysql.connector
+import redis
+
+class StockChecker:
+    def __init__(self, db_config, redis_config, threshold=10):
+        self.db_config = db_config
+        self.redis_config = redis_config
+        self.threshold = threshold
+        self.redis_client = redis.StrictRedis(**self.redis_config)
+
+    def check_stock_levels(self):
+        connection = mysql.connector.connect(**self.db_config)
+        cursor = connection.cursor()
+        try:
+            cursor.execute("SELECT product_id, stock_level FROM inventory")
+            for (product_id, stock_level) in cursor:
+                if stock_level < self.threshold:
+                    self.publish_low_inventory_alert(product_id, stock_level)
+        finally:
+            cursor.close()
+            connection.close()
+
+    def publish_low_inventory_alert(self, product_id, stock_level):
+        alert_message = f'Low inventory alert: Product ID {product_id} has only {stock_level} units left.'
+        self.redis_client.publish('low_inventory_alerts', alert_message)
+
+    def start(self):
+        while True:
+            self.check_stock_levels()
+            time.sleep(60)
+
+# Configuration for MySQL and Redis
+db_config = {
+    'user': 'your_user',
+    'password': 'your_password',
+    'host': 'localhost',
+    'database': 'your_database'
+}
+
+redis_config = {
+    'host': 'localhost',
+    'port': 6379,
+    'db': 0
+}
+
+# Start the stock checker in a separate thread
+stock_checker = StockChecker(db_config, redis_config)
+threading.Thread(target=stock_checker.start).start()
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+import jwt
+import datetime
+
+DATABASE_URL = "mysql+pymysql://user:password@localhost/dbname"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True)
+    password = Column(String(50))
+    role = Column(String(50))
+
+class Stock(Base):
+    __tablename__ = "stocks"
+    id = Column(Integer, primary_key=True, index=True)
+    product_name = Column(String(50))
+    quantity = Column(Integer)
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+
+class UserInDB(User):
+    hashed_password: str
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+def create_jwt_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, "SECRET_KEY", algorithm="HS256")
+
+@app.post("/token", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    db: Session = SessionLocal()
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or user.password != form_data.password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = create_jwt_token({'sub': user.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.post("/stocks/update")
+async def update_stock(product_name: str, quantity: int, token: str = Depends(oauth2_scheme)):
+    db: Session = SessionLocal()
+    try:
+        payload = jwt.decode(token, "SECRET_KEY", algorithms=["HS256"])
+        username = payload.get("sub")
+        user = db.query(User).filter(User.username == username).first()
+        if user.role != "admin":
+            raise HTTPException(status_code=403, detail="Not enough permissions")
+        stock = db.query(Stock).filter(Stock.product_name == product_name).first()
+        if stock:
+            stock.quantity = quantity
+        else:
+            new_stock = Stock(product_name=product_name, quantity=quantity)
+            db.add(new_stock)
+        db.commit()
+        return {"message": "Stock updated successfully"}
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=403, detail="Could not validate credentials")
+    finally:
+        db.close()
