@@ -279,6 +279,8 @@ more-itertools==11.1.0
     # via
     #   jaraco-classes
     #   jaraco-functools
+nest-asyncio==1.6.0
+    # via -r requirements.in
 openai==2.43.0
     # via langchain-openai
 openapi-pydantic==0.5.1

@@ -28,4 +28,6 @@ langgraph-checkpoint-sqlite
 tiktoken
 google-api-python-client
 youtube-transcript-api
+langchain-mcp-adapters 
+nest-asyncio
 
