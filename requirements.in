@@ -31,3 +31,8 @@ youtube-transcript-api
 langchain-mcp-adapters 
 nest-asyncio
 
+
+langgraph
+langgraph-checkpoint-sqlite
+langgraph-checkpoint-postgres
+

@@ -237,9 +237,12 @@ langgraph-checkpoint==4.1.1
     # via
     #   langgraph
     #   langgraph-api
+    #   langgraph-checkpoint-postgres
     #   langgraph-checkpoint-sqlite
     #   langgraph-prebuilt
     #   langgraph-runtime-inmem
+langgraph-checkpoint-postgres==3.1.2
+    # via -r requirements.in
 langgraph-checkpoint-sqlite==3.1.0
     # via -r requirements.in
 langgraph-cli==0.4.30
@@ -313,6 +316,7 @@ opentelemetry-semantic-conventions==0.63b1
 orjson==3.11.9
     # via
     #   langgraph-api
+    #   langgraph-checkpoint-postgres
     #   langgraph-sdk
     #   langsmith
 ormsgpack==1.12.2
@@ -349,6 +353,10 @@ protobuf==6.33.6
     #   proto-plus
 psutil==7.2.2
     # via ipython
+psycopg==3.3.4
+    # via langgraph-checkpoint-postgres
+psycopg-pool==3.3.1
+    # via langgraph-checkpoint-postgres
 ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.3
@@ -519,6 +527,8 @@ typing-extensions==4.15.0
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
+    #   psycopg
+    #   psycopg-pool
     #   py-key-value-aio
     #   pydantic
     #   pydantic-core
