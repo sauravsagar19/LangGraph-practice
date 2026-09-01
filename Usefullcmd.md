@@ -22,3 +22,12 @@
     ii) we can write our base packages there( I mean we can right something like langgraph>=0.2.0,<0.3.0 : which means that, the python should not go against our contstraints while generating requirement.txt.)
     iii) then we run pip-compile requirement.in, It will generate a in-depth requirement.txt.
     iv) then we can do pip install -r requirement.txt
+
+
+# When There is less available space left, to clean up
+rm -rf /workspaces/LangGraph-practice/.venv   - wipe out the venv entierly
+rm -rf ~/.cache/pip ~/.cache/pipx ~/.cache/pypoetry   -  clean global cache entierly
+du -h --max-depth=1 /workspaces/LangGraph-practice/ -  check for files and folders taking lasge space so that we can delete them manually
+
+check for available space now : df -h /
+
