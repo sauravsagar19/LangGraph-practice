@@ -529,13 +529,10 @@ truststore==0.10.4
     #   langgraph-api
 typing-extensions==4.16.0
     # via
-    #   anyio
     #   beautifulsoup4
-    #   exceptiongroup
     #   fastmcp-slim
     #   google-genai
     #   grpcio
-    #   httpx2
     #   langchain-core
     #   langchain-mcp-adapters
     #   langchain-protocol
@@ -546,13 +543,10 @@ typing-extensions==4.16.0
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
-    #   psycopg
     #   psycopg-pool
     #   py-key-value-aio
     #   pydantic
     #   pydantic-core
-    #   referencing
-    #   starlette
     #   typing-inspection
 typing-inspection==0.4.4
     # via

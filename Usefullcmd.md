@@ -11,6 +11,8 @@
 
 # Creating UV commands [ BETTER THAN PIP]
     # pip install uv
+    # uv venv
+    # source .venv/bin/activate
     # To compile requirements.in : uv pip compile requirements.in -o requirements.txt
     # to install the requiremetns.txt: uv pip install -r requirements.txt
 
