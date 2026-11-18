@@ -71,7 +71,7 @@ supervisor_llm=ChatOpenAI (
 )
 
 # DEFINING NODES
-def supervisor(State: shared_state):
+def  supervisor(State: shared_state):
     # SUPERVISOR_PROMPT=ChatPromptTemplate.from_template(SUPERVISOR_PROMPT)
 
     if State.is_locked == True:
